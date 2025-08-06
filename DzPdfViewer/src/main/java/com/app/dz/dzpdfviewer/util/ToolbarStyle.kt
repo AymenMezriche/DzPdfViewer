@@ -1,6 +1,5 @@
 package com.app.dz.dzpdfviewer.util
 
-import android.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Drawable
@@ -9,6 +8,7 @@ import android.widget.TextView
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.app.dz.dzpdfviewer.R
 
 /**
  * Encapsulates all theming options for the PDF Viewer Toolbar
@@ -79,7 +79,7 @@ data class ToolbarStyle(
             val downloadIconTint = ThemeUtils.getColorFromTypedArray(
                 typedArray,
                 R.styleable.PdfRendererView_toolbar_pdfView_downloadIconTint,
-                ContextCompat.getColor(context, R.color.white)
+                ContextCompat.getColor(context, android.R.color.white)
             )
 
             typedArray.recycle()

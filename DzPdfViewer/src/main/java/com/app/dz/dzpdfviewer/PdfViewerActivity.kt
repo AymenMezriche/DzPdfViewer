@@ -481,7 +481,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun promptUserForLocation(fileName: String) {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-                .setType = "application/pdf"
+            type = "application/pdf" // ✅ set MIME type
             putExtra(Intent.EXTRA_TITLE, fileName)
         }
         createFileLauncher.launch(intent)

@@ -3,6 +3,8 @@ package com.app.dz.dzpdfviewer.util
 import android.content.Context
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.app.dz.dzpdfviewer.R
+import com.app.dz.dzpdfviewer.databinding.ActivityPdfViewerBinding
 
 /**
  * Handles general view styling like background & progress bar
