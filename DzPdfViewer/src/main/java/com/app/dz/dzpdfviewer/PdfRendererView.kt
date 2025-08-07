@@ -88,6 +88,8 @@ class PdfRendererView @JvmOverloads constructor(
             return pdfRendererCore.getPageCount()
         }
 
+    var isHorizontalScroll: Boolean = false
+
     /**
      * Clears the cache directory of the application.
      * @param context The application context.
@@ -231,6 +233,11 @@ class PdfRendererView @JvmOverloads constructor(
         )
 
         recyclerView.apply {
+            layoutManager = LinearLayoutManager(
+                context,
+                if (isHorizontalScroll) LinearLayoutManager.HORIZONTAL else LinearLayoutManager.VERTICAL,
+                false
+            )
             adapter = pdfViewAdapter
             itemAnimator = DefaultItemAnimator()
             if (showDivider) {

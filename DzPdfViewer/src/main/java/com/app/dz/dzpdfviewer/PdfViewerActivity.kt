@@ -250,6 +250,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun init() {
+        binding.pdfView.isHorizontalScroll = true;
         binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
                 true.showProgressBar()
