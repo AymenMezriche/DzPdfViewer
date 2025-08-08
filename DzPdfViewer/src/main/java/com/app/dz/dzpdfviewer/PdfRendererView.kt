@@ -13,11 +13,13 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Parcelable
 import android.util.AttributeSet
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleObserver
@@ -38,7 +40,6 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
 import kotlin.math.roundToInt
-import androidx.core.view.isVisible
 
 /**
  * Created by Rajat on 11,July,2020
@@ -373,7 +374,10 @@ class PdfRendererView @JvmOverloads constructor(
                 pageNo.postDelayed({ pageNo.visibility = GONE }, 3000)
             }
             statusListener?.onPageChanged(position + 1, totalPageCount)
-            pageSlider?.value = (position + 1).toFloat()
+            pageSlider?.value = ((position + 1).toFloat()).coerceIn(
+                pageSlider?.valueFrom ?: 1f,
+                pageSlider?.valueTo ?: totalPageCount.toFloat()
+            )
             showSliderTemporarily()
         }
     }
@@ -385,7 +389,8 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun setTypeArray(typedArray: TypedArray) {
-        enableSideLabel = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableSideLabel, false)
+        enableSideLabel =
+            typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableSideLabel, false)
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
         enableLoadingForPages =
@@ -531,11 +536,12 @@ class PdfRendererView @JvmOverloads constructor(
 
     fun setupPageSlider(isHorizontalScroll: Boolean) {
         if (!enableSideLabel) return
-        val pageSliderContainer = findViewById<FrameLayout>(R.id.pageSliderContainer)
-        if (isHorizontalScroll)
-            pageSlider = findViewById(R.id.pageSliderH)
+        val pageSliderContainer = findViewById<FrameLayout>(R.id.parentFrame)
+
+        pageSlider = if (isHorizontalScroll)
+            findViewById(R.id.pageSliderH)
         else
-            pageSlider = findViewById(R.id.pageSliderV)
+            findViewById(R.id.pageSliderV)
 
         val params = pageSlider!!.layoutParams as LayoutParams
         if (!isHorizontalScroll) {
@@ -548,8 +554,7 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun setupPageListener(slider: Slider?, totalPages: Int) {
-        if (!enableSideLabel) return
-        if (totalPages == 1) return;
+        if (!enableSideLabel || totalPages == 1) return
         slider?.valueFrom = 1f
         slider?.valueTo = totalPages.toFloat()
         slider?.stepSize = 0f

@@ -13,4 +13,11 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
+
+    <style name="MySliderLabelStyle" parent="@style/TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">#F44336</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+
 </resources>
