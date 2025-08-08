@@ -14,5 +14,7 @@
     <color name="pdf_viewer_icon_tint">#333333</color>
     <color name="pdf_viewer_icon_tint_dark">#DDDDDD</color>
     <color name="pdf_viewer_background_dark">#121212</color>
+    <color name="pdf_viewer_thumbColor">#333333</color>
+    <color name="pdf_viewer_trackColorInactive">#C5C2C2</color>
 
 </resources>

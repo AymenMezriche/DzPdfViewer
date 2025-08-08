@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools">
+    android:layout_height="match_parent">
 
     <com.app.dz.dzpdfviewer.PinchZoomRecyclerView
         android:id="@+id/recyclerView"
@@ -20,6 +21,45 @@
 
     <include
         android:id="@+id/pageNumber"
-        layout="@layout/pdf_view_page_no"
-        />
+        layout="@layout/pdf_view_page_no" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/pageSliderH"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:stepSize="0"
+        android:visibility="gone"
+        app:labelBehavior="visible"
+        app:thumbColor="#B1C0D1"
+        app:trackColorActive="@color/pdf_viewer_trackColorInactive"
+        app:trackColorInactive="@color/pdf_viewer_trackColorInactive"
+        app:trackHeight="0dp"
+        tools:visibility="visible" />
+
+    <FrameLayout
+        android:id="@+id/pageSliderContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginTop="15dp"
+        android:layout_marginBottom="15dp"
+        >
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/pageSliderV"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:rotation="90"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone"
+            app:labelBehavior="visible"
+            app:thumbColor="#B1C0D1"
+            app:trackColorActive="@color/pdf_viewer_trackColorInactive"
+            app:trackColorInactive="@color/pdf_viewer_trackColorInactive"
+            app:trackHeight="0dp"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+
 </FrameLayout>

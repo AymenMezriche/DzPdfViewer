@@ -9,9 +9,12 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -26,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.app.dz.dzpdfviewer.util.CacheManager
 import com.app.dz.dzpdfviewer.util.CacheStrategy
+import com.google.android.material.slider.Slider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
+import kotlin.math.roundToInt
+import androidx.core.view.isVisible
 
 /**
  * Created by Rajat on 11,July,2020
@@ -52,6 +58,8 @@ class PdfRendererView @JvmOverloads constructor(
     // region UI
     lateinit var recyclerView: PinchZoomRecyclerView
     private lateinit var pageNo: TextView
+    private var pageSlider: Slider? = null
+
     private var divider: Drawable? = null
     private var pageMargin: Rect = Rect(0, 0, 0, 0)
     // endregion
@@ -65,6 +73,7 @@ class PdfRendererView @JvmOverloads constructor(
 
     // region Flags
     private var showDivider = true
+    var enableSideLabel = false
     private var isZoomEnabled = true
     private var enableLoadingForPages = false
     private var disableScreenshots = false
@@ -79,9 +88,16 @@ class PdfRendererView @JvmOverloads constructor(
     var zoomListener: ZoomListener? = null
     var statusListener: StatusCallBack? = null
 
+    // 1️⃣ Keep handler and runnable as fields
+    private val sliderHideHandler = Handler(Looper.getMainLooper())
+    private val hideSliderRunnable = Runnable {
+        pageSlider?.visibility = View.GONE
+    }
+
     //region Public APIs
     fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
-    fun getZoomScale(): Float = if (this::recyclerView.isInitialized) recyclerView.getZoomScale() else 1f
+    fun getZoomScale(): Float =
+        if (this::recyclerView.isInitialized) recyclerView.getZoomScale() else 1f
 
     val totalPageCount: Int
         get() {
@@ -150,7 +166,10 @@ class PdfRendererView @JvmOverloads constructor(
      * @param file The PDF file to render.
      * @param cacheStrategy Cache strategy to apply.
      */
-    fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
+    fun initWithFile(
+        file: File,
+        cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+    ) {
         this.cacheStrategy = cacheStrategy
         val cacheIdentifier = file.name
 
@@ -223,6 +242,7 @@ class PdfRendererView @JvmOverloads constructor(
         recyclerView = findViewById(R.id.recyclerView)
         pageNo = findViewById(R.id.pageNumber)
 
+
         // Now it's safe to create the adapter and assign it
         pdfViewAdapter = PdfViewAdapter(
             context,
@@ -247,6 +267,10 @@ class PdfRendererView @JvmOverloads constructor(
             }
             setZoomEnabled(isZoomEnabled)
         }
+
+        // Call setupPageSlider here, after pageSlider is found and
+        // isHorizontalScroll is known and has been applied to RecyclerView
+        setupPageSlider(this.isHorizontalScroll)
 
         val snapHelper = PagerSnapHelper()
         snapHelper.attachToRecyclerView(recyclerView)
@@ -282,6 +306,7 @@ class PdfRendererView @JvmOverloads constructor(
         recyclerView.post {
             postInitializationAction?.invoke()
             statusListener?.onPdfRenderSuccess()
+            setupPageListener(slider = pageSlider, totalPages = totalPageCount)
             postInitializationAction = null
         }
 
@@ -309,7 +334,8 @@ class PdfRendererView @JvmOverloads constructor(
         }
 
         recyclerView.postDelayed({
-            val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return@postDelayed
+            val layoutManager =
+                recyclerView.layoutManager as? LinearLayoutManager ?: return@postDelayed
             val adapter = recyclerView.adapter ?: return@postDelayed
             if (adapter.itemCount == 0) return@postDelayed
 
@@ -347,6 +373,8 @@ class PdfRendererView @JvmOverloads constructor(
                 pageNo.postDelayed({ pageNo.visibility = GONE }, 3000)
             }
             statusListener?.onPageChanged(position + 1, totalPageCount)
+            pageSlider?.value = (position + 1).toFloat()
+            showSliderTemporarily()
         }
     }
 
@@ -357,6 +385,7 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun setTypeArray(typedArray: TypedArray) {
+        enableSideLabel = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableSideLabel, false)
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
         enableLoadingForPages =
@@ -492,6 +521,69 @@ class PdfRendererView @JvmOverloads constructor(
         else -> 0         // idle
     }
 
+    fun getCurrentPage(): Int {
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
+            ?: return -1
+        return layoutManager.findFirstCompletelyVisibleItemPosition()
+            .takeIf { it != RecyclerView.NO_POSITION }
+            ?: layoutManager.findFirstVisibleItemPosition()
+    }
+
+    fun setupPageSlider(isHorizontalScroll: Boolean) {
+        if (!enableSideLabel) return
+        val pageSliderContainer = findViewById<FrameLayout>(R.id.pageSliderContainer)
+        if (isHorizontalScroll)
+            pageSlider = findViewById(R.id.pageSliderH)
+        else
+            pageSlider = findViewById(R.id.pageSliderV)
+
+        val params = pageSlider!!.layoutParams as LayoutParams
+        if (!isHorizontalScroll) {
+            pageSliderContainer.post {
+                val parentHeight = pageSliderContainer.height
+                params.width = parentHeight  // since it's rotated, width acts like height
+                pageSlider!!.layoutParams = params
+            }
+        }
+    }
+
+    private fun setupPageListener(slider: Slider?, totalPages: Int) {
+        if (!enableSideLabel) return
+        if (totalPages == 1) return;
+        slider?.valueFrom = 1f
+        slider?.valueTo = totalPages.toFloat()
+        slider?.stepSize = 0f
+
+        // Set starting value to page 1
+        slider?.value = 1f
+
+        // Show initial page number in the label
+        slider?.setLabelFormatter(fun(value: Float): String {
+            if (isHorizontalScroll) return "Page ${value.toInt()}"
+            return "${value.toInt()}"
+        })
+
+        slider?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                sliderHideHandler.removeCallbacks(hideSliderRunnable) // cancel auto-hide while dragging
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) {
+                val page = slider.value.roundToInt()
+                jumpToPage(page - 1, false, 0)
+                sliderHideHandler.postDelayed(hideSliderRunnable, 3000) // hide after 2s
+            }
+        })
+
+    }
+
+    private fun showSliderTemporarily() {
+        if (pageSlider?.isVisible ?: true) return
+        pageSlider?.visibility = VISIBLE
+        sliderHideHandler.removeCallbacks(hideSliderRunnable) // cancel previous hide
+        sliderHideHandler.postDelayed(hideSliderRunnable, 3000) // hide after 2s
+    }
+
     // region Interfaces
     interface StatusCallBack {
         fun onPdfLoadStart() {}
@@ -507,3 +599,7 @@ class PdfRendererView @JvmOverloads constructor(
         fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
     }
 }
+
+fun Int.dpToPx(context: Context): Int =
+    (this * context.resources.displayMetrics.density).toInt()
+
