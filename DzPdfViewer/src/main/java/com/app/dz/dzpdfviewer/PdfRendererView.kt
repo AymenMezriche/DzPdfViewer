@@ -178,13 +178,26 @@ class PdfRendererView @JvmOverloads constructor(
         statusListener?.onPdfRenderStart()
         viewScope.launch {
             try {
-                val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+                /*val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
                     statusListener?.onPdfLoadSuccess(file.absolutePath)
+                }*/
+
+                // Move heavy work to background thread
+                val renderer = withContext(Dispatchers.IO) {
+                    val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+                    PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 }
+
+                // Back to UI thread for view inflation
+                withContext(Dispatchers.Main) {
+                    initializeRenderer(renderer) // this inflates PinchZoomRecyclerView
+                    statusListener?.onPdfLoadSuccess(file.absolutePath)
+                }
+
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
